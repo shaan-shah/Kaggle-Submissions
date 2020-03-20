@@ -1,0 +1,71 @@
+%load_ext autoreload
+%autoreload 2
+%matplotlib inline
+
+from fastai.imports import *
+from fastai.structured import *
+
+from pandas_summary import DataFrameSummary
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+from IPython.display import display
+
+from sklearn import metrics
+
+PATH = "data/titanic/"
+
+df_raw=pd.read_csv(f"{PATH}titanic.csv",low_memory=False)
+test =pd.read_csv(f"{PATH}test.csv",low_memory=False)
+
+train_cats(df_raw,)
+apply_cats(df=test, trn=df_raw)
+
+df, y , nas = proc_df(df_raw, 'Survived')
+X_test,_,nas = proc_df(test, na_dict=nas)
+
+copy=pd.DataFrame()
+copy['PassengerId']=X_test.PassengerId
+
+li=['PassengerId','Name','Ticket','Cabin']
+df=df.drop(li,axis=1)
+X_test=X_test.drop(li,axis=1)
+
+def split_vals(a,n):
+    return a[:n].copy(), a[n:].copy()
+
+n_valid=300
+n_trn=len(df)-n_valid
+
+raw_train,raw_valid=split_vals(df_raw,n_trn)
+X_train,X_valid=split_vals(df,n_trn)
+y_train,y_valid=split_vals(y,n_trn)
+
+def predic_score(x,y):
+    z=m.predict(x)
+    i=0
+    counter=0
+    while i <len(x) :
+        if z[i]==y[i]:
+            counter=counter+1
+        i=i+1
+    return(counter*100/len(x))
+
+def print_score(m):
+    res = [predic_score(X_valid,y_valid),predic_score(X_train,y_train)]
+    if hasattr(m, 'oob_score_'): res.append(m.oob_score_)
+    for a in res :
+        if a :
+            print(a)
+
+m=RandomForestClassifier(n_jobs=-1,random_state=16000,min_samples_leaf=5,n_estimators=5000,max_features=0.5)
+m.fit(X_train,y_train)
+print_score(m)
+
+prediction=m.predict(X_test)
+ans=pd.DataFrame()
+ans['PassengerId']=copy.PassengerId
+ans['Survived']=prediction
+ans.to_csv('submission.csv',index=False)
+
+
+
+        
